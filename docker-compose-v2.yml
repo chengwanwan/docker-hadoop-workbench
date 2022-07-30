@@ -82,7 +82,7 @@ services:
             - namenode
             - datanode
         environment:
-            HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+            HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:mysql://hive-metastore-mysql/metastore"
         ports:
             - 10000:10000
             - 10002:10002
@@ -90,13 +90,15 @@ services:
             - ./hadoop.env
         networks:
             - hadoop
-    
+        volumes:
+            - ./jars/mysql-connector-java-8.0.25.jar:/opt/hive/lib/mysql-connector-java-8.0.25.jar
+
     hive-metastore:
         image: bde2020/hive:2.3.2-postgresql-metastore
         container_name: hive-metastore
         restart: always
         environment:
-            SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore-postgresql:5432"
+            SERVICE_PRECONDITION: "namenode:9870 datanode:9864 hive-metastore-mysql:3306"
         command: /opt/hive/bin/hive --service metastore
         ports:
             - 9083:9083
@@ -104,12 +106,14 @@ services:
             - ./hadoop.env
         networks:
             - hadoop
+        volumes:
+            - ./jars/mysql-connector-java-8.0.25.jar:/opt/hive/lib/mysql-connector-java-8.0.25.jar
     
     hive-metastore-postgresql:
         image: bde2020/hive-metastore-postgresql:2.3.0
         container_name: hive-metastore-postgresql
         volumes:
-            - hive_metastore:/var/lib/postgresql/data
+            - hive-metastore-postgresql:/var/lib/postgresql/data
         networks:
             - hadoop
     
@@ -164,11 +168,45 @@ services:
         networks:
             - hadoop
 
+    hive-metastore-mysql:
+        image: mysql:5.7
+        container_name: hive-metastore-mysql
+        privileged: true
+        volumes:
+            #映射mysql的数据目录到宿主机，保存数据【映射使用相对路径】
+            - hive_metastore_mysql:/var/lib/hive-metastore-mysql/data
+        networks:
+            - hadoop
+        restart: always #设置无论遇到什么错，重启容器
+        ports:
+            # 使用宿主机的3306端口映射到容器的3306端口
+            # 宿主机：容器
+            - 3306:3306
+        environment:
+            TZ: Asia/Shanghai
+            MYSQL_ROOT_PASSWORD: 520521 # root用户 密码
+            MYSQL_DATABASE: metastore #数据库名
+            MYSQL_USER: hive     #自定义数据库的用户
+            MYSQL_PASSWORD: hive #自定义数据库的用户
+            # 使用 command 可以覆盖容器启动后默认执行的命令
+        command: [
+            'mysqld',
+            '--innodb-buffer-pool-size=80M',
+            '--character-set-server=utf8mb4',  #字符集
+            '--collation-server=utf8mb4_general_ci',  #排序规则
+            '--default-time-zone=+8:00',
+            '--lower-case-table-names=1',
+            '--max_connections=1000', #最大连接数
+            '--wait_timeout=28800', #非交互式连接超时时间
+            '--default-authentication-plugin=mysql_native_password'  #认证方式
+        ]
+
 volumes:
     hadoop_namenode:
     hadoop_datanode:
     hadoop_historyserver:
-    hive_metastore:
+    hive-metastore-postgresql:
+    hive_metastore_mysql:
 
 networks:
     hadoop:

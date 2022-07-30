@@ -1,17 +1,18 @@
 # Docker Hadoop Workbench
 
-A Hadoop cluster based on Docker, including Hive and Spark.
+fork 的 git: https://github.com/bambrow/docker-hadoop-workbench
 
-## Introduction
-This repository uses [Docker Compose](https://docs.docker.com/compose/) to initialize a Hadoop cluster including the following:
+原作者写的MD: https://bambrow.com/20210625-docker-hadoop-1/
+## 介绍
+fork git 基于 [Docker Compose](https://docs.docker.com/compose/) ，搭建的集群包含以下部分：
 
 - Hadoop
 - Hive
 - Spark
 
-Please note that this project is built on top of [Big Data Europe](https://github.com/big-data-europe) works. Please check their [Docker Hub](https://hub.docker.com/u/bde2020/) for latest images.
+参考了 [Big Data Europe](https://github.com/big-data-europe) 的一些工作。项目中所使用的 Docker 镜像可能会被更新，可以参看他们的 [Docker Hub](https://hub.docker.com/u/bde2020/) 以获取最新镜像。
 
-This project is based on the following Docker versions:
+本项目所依赖的版本号如下：
 ```
 Client:
  Version:           20.10.2
@@ -21,23 +22,17 @@ Server: Docker Engine - Community
 docker-compose version 1.29.1, build c34c88b2
 ```
 
-## Quick Start
-
-To start the cluster simply run:
-
-```
-./start_demo.sh
-```
-
-Alternatively, you can use `v2`, which is built on top of my own `spark-master` and `spark-history-server`:
+## 快速开始
+直接克隆项目并运行集群：
 
 ```
-./start_demo_v2.sh
+./start.sh
 ```
 
-You can stop the cluster using `./stop_demo.sh` or `./stop_demo_v2.sh`. Also you can modify `DOCKER_COMPOSE_FILE` in `start_demo.sh` and `stop_demo.sh` to use other YAML files.
+可以修改 start.sh 与 stop.sh 文件里的 DOCKER_COMPOSE_FILE 变量以使用其他版本的 YAML 文件。
 
-## Interfaces
+
+## 集群内容
 
 - Namenode: http://localhost:9870/dfshealth.html#tab-overview
 - Datanode: http://localhost:9864/
@@ -47,25 +42,32 @@ You can stop the cluster using `./stop_demo.sh` or `./stop_demo_v2.sh`. Also you
 - HiveServer2: http://localhost:10002/
 - Spark Master: http://localhost:8080/
 - Spark Worker: http://localhost:8081/
-- Spark Job WebUI: http://localhost:4040/ (only works when Spark job is running on `spark-master`)
+- Spark Job WebUI: http://localhost:4040/ (只有当spark任务在`spark-master`上且是运行着才起作用)
 - Presto WebUI: http://localhost:8090/
 - Spark History Server：http://localhost:18080/
 
-## Connections
+## 账密
+hive 元数据我改成了mysql:
 
-Use `hdfs dfs` to connect to `hdfs://localhost:9000/` (Please make sure you have [Hadoop](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html) installed first):
+root 520521
+
+hive hive
+
+## 连接
+
+使用 `hdfs dfs` 连接到 `hdfs://localhost:9000/` (请先在本机安装 [Hadoop](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html)):
 
 ```
 hdfs dfs -ls hdfs://localhost:9000/
 ```
 
-Use Beeline to connect to HiveServer2 (Please make sure you have [Hive](https://cwiki.apache.org/confluence/display/Hive/AdminManual+Installation) installed first):
+可以使用 Beeline 连接到 HiveServer2 (请先在本机安装  [Hive](https://cwiki.apache.org/confluence/display/Hive/AdminManual+Installation) ):
 
 ```
 beeline -u jdbc:hive2://localhost:10000/default -n hive -p hive
 ```
 
-Use `spark-shell` to connect to Hive Metastore via thrift protocol (Please make sure you have [Spark](https://spark.apache.org/downloads.html) installed first):
+可以使用 `spark-shell` 通过 thrift 协议连接到 Hive Metastore (请先在本机安装  [Spark](https://spark.apache.org/downloads.html) ):
 
 ```
 $ spark-shell
@@ -103,7 +105,7 @@ import org.apache.spark.sql.SparkSession
 spark: org.apache.spark.sql.SparkSession = org.apache.spark.sql.SparkSession@1223467f
 ```
 
-Use [Presto CLI](https://prestodb.io/docs/current/installation/cli.html) to connect to Presto and query Hive data:
+可以使用 [Presto CLI](https://prestodb.io/docs/current/installation/cli.html) 连接 Presto 并且读取 Hive 的数据：
 
 ```bash
 wget https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.255/presto-cli-0.255-executable.jar
@@ -112,16 +114,16 @@ chmod +x presto
 ./presto --server localhost:8090 --catalog hive --schema default
 ```
 
-## Run MapReduce Job `WordCount`
+## 运行 MapReduce 任务 `WordCount`
 
-This part is based on [Big Data Europe's Hadoop Docker](https://github.com/big-data-europe/docker-hadoop) project.
+这部分基于 [Big Data Europe's Hadoop Docker](https://github.com/big-data-europe/docker-hadoop) 的项目里的运行示例。
 
-First run `hadoop-base` as a helper container:
+首先我们运行一个辅助容器 `hadoop-base` :
 ```bash
 docker run -d --network hadoop --env-file hadoop.env --name hadoop-base bde2020/hadoop-base:2.0.0-hadoop3.2.1-java8 tail -f /dev/null
 ```
 
-Then run the following:
+接下来运行以下命令以准备数据并启动 MapReduce 任务：
 ```bash
 docker exec -it hadoop-base hdfs dfs -mkdir -p /input/
 docker exec -it hadoop-base hdfs dfs -copyFromLocal -f /opt/hadoop-3.2.1/README.txt /input/
@@ -131,18 +133,24 @@ docker exec -it hadoop-base /bin/bash
 hadoop jar jars/WordCount.jar WordCount /input /output
 ```
 
-You should be able to see the job in http://localhost:8088/cluster/apps and http://localhost:8188/applicationhistory (when finished).
+接下来，你可以通过以下链接看到任务状态：
 
-After the job is finished, check the result:
+[http://localhost:8088/cluster/apps](http://localhost:8088/cluster/apps)
+
+[http://localhost:8188/applicationhistory](http://localhost:8188/applicationhistory) (运行结束后).
+
+当任务运行完成，运行以下命令查看结果：
+
 ```bash
 hdfs dfs -cat /output/*
 ```
 
-Then type `exit` to exit the container.
+最后你可以使用 `exit` 退出该容器。
 
-## Run Hive Job
 
-Make sure `hadoop-base` is running. Then prepare the data:
+## 运行 Hive 任务
+
+请首先确定 `hadoop-base` 正在运行中。关于如何启动此辅助容器，请参看上一节。接下来准备数据：
 
 ```bash
 docker exec -it hadoop-base hdfs dfs -mkdir -p /test/
@@ -154,7 +162,8 @@ hdfs dfs -ls /test
 exit
 ```
 
-Then create the table:
+然后新建 Hive 表：
+
 ```bash
 docker cp scripts/hive-beers.q hive-server:hive-beers.q
 docker exec -it hive-server /bin/bash
@@ -163,22 +172,32 @@ hive -f hive-beers.q
 exit
 ```
 
-Then play with data using Beeline:
+接下来你就可以使用 Beeline 访问到这些数据了：
+
 ```
 beeline -u jdbc:hive2://localhost:10000/test -n hive -p hive
 
 0: jdbc:hive2://localhost:10000/test> select count(*) from beers;
 ```
 
-You should be able to see the job in http://localhost:8088/cluster/apps and http://localhost:8188/applicationhistory (when finished).
+同样，你可以通过以下链接看到任务状态：
 
-## Run Spark Shell
+[http://localhost:8088/cluster/apps](http://localhost:8088/cluster/apps)
 
-Make sure you have prepared the data and created the table in the previous step.
+[http://localhost:8188/applicationhistory](http://localhost:8188/applicationhistory) (运行结束后)
+
+## 运行 Spark Shell
+
+在进行这一步前，请先参看前面两个章节以准备 Hive 数据并创建表格。然后运行以下命令：
+
 
 ```
 docker exec -it spark-master spark/bin/spark-shell
+```
 
+进入 Spark Shell 后，你可以直接通过先前创建的 Hive 表进行操作：
+
+```
 scala> spark.sql("show databases").show
 +---------+
 |namespace|
@@ -194,30 +213,39 @@ scala> df.count
 res0: Long = 7822
 ```
 
-You should be able to see the Spark Shell session in http://localhost:8080/ and your job in http://localhost:4040/jobs/.
+你可以在以下两个地址看到你的 Spark Shell 会话：
 
-If you encounter the following warning when running `spark-shell`:
+http://localhost:8080/ 
+
+http://localhost:4040/jobs/ (运行时)
+
 ```
-WARN TaskSchedulerImpl: Initial job has not accepted any resources; check your cluster UI to ensure that workers are registered and have sufficient resources
-```
-Please check the logs of `spark-master` using `docker logs -f spark-master`. If the following exists, please restart your `spark-worker` using `docker-compose restart spark-worker`:
-```
+如果你在运行 `spark-shell` 的时候遇到了以下警告:
+WARN TaskSchedulerImpl: Initial job has not accepted any resources; check your cluster UI to ensure that workers are registered and have sufficient resources```
+该警告显示没有资源可以去运行你的任务，并提醒你去检查 worker 是否都已经被注册，而且拥有足够多的资源。此时你需要使用 docker logs -f spark-master 检查一下 spark-master 的日志。不出意外的话，你会看到下面的内容：
+
 WARN Master: Got heartbeat from unregistered worker worker-20210622022950-xxx.xx.xx.xx-xxxxx. This worker was never registered, so ignoring the heartbeat.
+这是在提示你有一个 worker 没有被注册，所以忽略了它的心跳。该 worker 没有被注册的原因很多，很可能是之前电脑被休眠过，导致 worker 掉线。这时你可以使用 docker-compose restart spark-worker 重启 spark-worker，重启完成后，该 worker 就会被自动注册。
+
+同样，如果要运行 spark-sql，可以使用这个命令：docker exec -it spark-master spark/bin/spark-sql。
 ```
+## 运行 Spark Submit 任务
 
-Similarly, to run `spark-sql`, use `docker exec -it spark-master spark/bin/spark-sql`.
-
-## Run Spark Submit
-
-```bash
+```
+bash
 docker exec -it spark-master /spark/bin/spark-submit --class org.apache.spark.examples.SparkPi /spark/examples/jars/spark-examples_2.12-3.1.1.jar 100
 ```
 
-You should be able to see Spark Pi in http://localhost:8080/ and your job in http://localhost:4040/jobs/.
+你可以在以下两个地址看到你的 Spark Pi 任务：
 
-## Configuration Files
+http://localhost:8080/
 
-Some configuration file locations are listed below. The non-empty configuration files are also copied to `conf` folder for future reference.
+http://localhost:4040/jobs/ (运行时)
+
+
+## 设置列表
+
+以下列举了容器内部的一些设置所在的位置。后面的以 `conf` 结尾的是它们在 `hadoop.env` 中的代号。你可以参考 `hadoop.env` 文件做额外的设置。
 
 - `namenode`:
   - `/etc/hadoop/core-site.xml` CORE_CONF

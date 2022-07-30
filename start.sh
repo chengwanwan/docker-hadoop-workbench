@@ -7,9 +7,9 @@ docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} down
 docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} pull
 sleep 5
 
-docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d namenode datanode resourcemanager nodemanager historyserver
+docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d namenode datanode resourcemanager nodemanager historyserver hive-metastore-mysql
 sleep 5
-docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d hive-server hive-metastore hive-metastore-postgresql presto-coordinator
+docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d hive-server hive-metastore presto-coordinator
 sleep 5
 docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d spark-master spark-worker
 sleep 15
@@ -17,3 +17,4 @@ sleep 15
 docker exec -it namenode hdfs dfs -mkdir -p /user/spark/applicationHistory
 docker-compose -f ${SCRIPT_PATH}/${DOCKER_COMPOSE_FILE} up -d spark-history-server
 
+docker exec -it hive-server schematool -dbType mysql -initSchema
